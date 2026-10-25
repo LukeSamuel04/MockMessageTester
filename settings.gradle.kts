@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "InBoxZero"
+rootProject.name = "MockMessageTester"
 include(":app")
