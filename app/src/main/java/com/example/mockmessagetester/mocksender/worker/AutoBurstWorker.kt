@@ -1,8 +1,8 @@
 package com.example.mockmessagetester.mocksender.worker
 
 import com.example.mockmessagetester.mocksender.core.NotificationDispatcher
-import com.example.mockmessagetester.mocksender.data.MockMessage
-import com.example.mockmessagetester.mocksender.data.MockScenario
+import com.example.mockmessagetester.mocksender.data.mockmessages.MockMessage
+import com.example.mockmessagetester.mocksender.data.mockmessages.MockScenario
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,9 +21,11 @@ class AutoBurstWorker(private val dispatcher: NotificationDispatcher) {
     val isRunning: Boolean
         get() = burstJob?.isActive == true
 
+    // [修复 Bug 3] 参数类型改为函数 () -> Boolean
     fun startRepeatMode(
         targetMessage: MockMessage,
         intervalMs: Long,
+        isTimestampEnabled: () -> Boolean,
         onProgress: (MockMessage) -> Unit
     ) {
         if (isRunning) return
@@ -32,15 +34,24 @@ class AutoBurstWorker(private val dispatcher: NotificationDispatcher) {
         burstJob = workerScope.launch {
             while (isActive) {
                 repeatCounter++
-                val relativeMs = System.currentTimeMillis() - burstStartTime
-                val displayContent = "${targetMessage.content} ($repeatCounter) @${relativeMs}ms"
+
+                // [修复 Bug 1] 解绑逻辑：不管开没开时间戳，都必须先拼接上序号
+                val baseContent = "${targetMessage.content} ($repeatCounter)"
+
+                // 然后再去动态查询开关状态，决定是否追加时间戳
+                val finalContent = if (isTimestampEnabled()) {
+                    val relativeMs = System.currentTimeMillis() - burstStartTime
+                    "$baseContent @${relativeMs}ms"
+                } else {
+                    baseContent
+                }
 
                 dispatcher.sendSingle(
                     sender = targetMessage.sender,
-                    content = displayContent
+                    content = finalContent
                 )
 
-                val sentMsg = targetMessage.copy(content = displayContent)
+                val sentMsg = targetMessage.copy(content = finalContent)
                 onProgress(sentMsg)
 
                 delay(intervalMs)
@@ -48,26 +59,40 @@ class AutoBurstWorker(private val dispatcher: NotificationDispatcher) {
         }
     }
 
+    // [修复 Bug 3] 参数类型改为函数 () -> Boolean
     fun startScriptMode(
         scenario: MockScenario,
+        isTimestampEnabled: () -> Boolean,
         onProgress: (MockMessage) -> Unit,
         onFinish: () -> Unit
     ) {
         if (isRunning) return
+        burstStartTime = System.currentTimeMillis()
 
         burstJob = workerScope.launch {
             for (msg in scenario.messages) {
                 if (!isActive) break
 
                 val displayTitle = msg.groupName ?: msg.sender
-                val displayContent = if (msg.groupName != null) {
+                val baseContent = if (msg.groupName != null) {
                     "${msg.sender}: ${msg.content}"
                 } else {
                     msg.content
                 }
 
-                dispatcher.sendSingle(sender = displayTitle, content = displayContent)
-                onProgress(msg)
+                // 动态查询开关状态
+                val finalContent = if (isTimestampEnabled()) {
+                    val relativeMs = System.currentTimeMillis() - burstStartTime
+                    "$baseContent @${relativeMs}ms"
+                } else {
+                    baseContent
+                }
+
+                dispatcher.sendSingle(sender = displayTitle, content = finalContent)
+
+                val sentMsg = msg.copy(content = finalContent)
+                onProgress(sentMsg)
+
                 delay(msg.delayAfterMs)
             }
 

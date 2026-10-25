@@ -47,6 +47,8 @@ fun BpmConfigDial(
     onBpmChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     isRunning: Boolean = false,
+    // 【新增管线参数】：接收外部传入的震动开关指令
+    isHapticEnabled: Boolean = true,
     onCenterClick: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
@@ -103,7 +105,11 @@ fun BpmConfigDial(
                         val newBpm = (newAccumulated / degreePerBpm).roundToInt().coerceIn(minBpm, maxBpm)
 
                         if (newBpm != oldBpm) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            // 【拦截点 1】：只有开关打开时，才在旋转刻度时提供震动反馈
+                            if (isHapticEnabled) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                //android.util.Log.d("MockLabHaptic", "拨盘刻度震动被触发！")
+                            }
                             onBpmChange(newBpm)
                         }
                     }
@@ -162,7 +168,6 @@ fun BpmConfigDial(
             )
         }
 
-        // 中心按钮区：增加阴影以体现可点击性
         val elevation = if (isRunning) 0.dp else 6.dp
         Box(
             modifier = Modifier
@@ -171,7 +176,11 @@ fun BpmConfigDial(
                 .clip(CircleShape)
                 .background(surfaceColor)
                 .clickable {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    // 【拦截点 2】：只有开关打开时，才在点击中心按钮时提供重震动反馈
+                    if (isHapticEnabled) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        //android.util.Log.d("MockLabHaptic", "拨盘刻度震动被触发！")
+                    }
                     onCenterClick()
                 },
             contentAlignment = Alignment.Center
@@ -187,7 +196,6 @@ fun BpmConfigDial(
                     text = if (isRunning) "STOP" else "START (PBM)",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    // 未运行时高亮展示为主色调
                     color = if (isRunning) centerActiveColor else centerReadyColor,
                     modifier = Modifier.padding(top = 4.dp)
                 )

@@ -11,10 +11,8 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.mockmessagetester.ui.components.settings.SettingActionItem
@@ -22,17 +20,17 @@ import com.example.mockmessagetester.ui.components.settings.SettingSectionCard
 import com.example.mockmessagetester.ui.components.settings.SettingSwitchItem
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
-    // 临时状态（UI 跑通后，我们会将其替换为 ViewModel / DataStore 下发的真实配置）
-    var isDarkMode by remember { mutableStateOf(false) }
-    var isHapticEnabled by remember { mutableStateOf(true) }
-    var appendTimestamp by remember { mutableStateOf(true) }
-    var autoGroup by remember { mutableStateOf(false) }
+fun SettingsScreen(
+    viewModel: SettingsViewModel, // 核心修改：强制要求传入 ViewModel
+    modifier: Modifier = Modifier
+) {
+    // 核心修改：通过 collectAsState 订阅底层的真实数据流 (StateFlow)
+    // 从此 UI 变成了一个纯粹的展示板，一切状态听指挥
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            // 开启垂直滚动，确保设置项增多时能在小屏幕设备上正常滑动
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -41,21 +39,19 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
         // 1. 外观与交互
         // ==========================================
         SettingSectionCard(title = "外观与交互") {
-            // 深色模式：使用全局重量级的 PrimarySwitch，并带动态图标
             SettingSwitchItem(
                 title = "深色模式",
                 subtitle = "强制开启深色主题界面",
-                isChecked = isDarkMode,
-                onCheckedChange = { isDarkMode = it },
+                isChecked = uiState.isDarkMode, // 从 uiState 读值
+                onCheckedChange = { viewModel.updateDarkMode(it) }, // 发送指令给 viewModel，绝不自己瞎改
                 usePrimarySwitch = true,
-                thumbIcon = if (isDarkMode) Icons.Filled.DarkMode else Icons.Filled.LightMode
+                thumbIcon = if (uiState.isDarkMode) Icons.Filled.DarkMode else Icons.Filled.LightMode
             )
-            // 触觉反馈：常规设置项，使用默认的 SecondarySwitch
             SettingSwitchItem(
                 title = "全局触觉反馈",
                 subtitle = "转动表盘或点击按钮时的马达震动",
-                isChecked = isHapticEnabled,
-                onCheckedChange = { isHapticEnabled = it }
+                isChecked = uiState.isHapticEnabled,
+                onCheckedChange = { viewModel.updateHaptic(it) }
             )
         }
 
@@ -66,14 +62,14 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             SettingSwitchItem(
                 title = "附加相对时间戳",
                 subtitle = "在连发消息尾部追加 @xxx_ms",
-                isChecked = appendTimestamp,
-                onCheckedChange = { appendTimestamp = it }
+                isChecked = uiState.appendTimestamp,
+                onCheckedChange = { viewModel.updateTimestamp(it) }
             )
             SettingSwitchItem(
                 title = "自动折叠通知",
                 subtitle = "模拟微信的多条消息合并效果",
-                isChecked = autoGroup,
-                onCheckedChange = { autoGroup = it }
+                isChecked = uiState.autoGroup,
+                onCheckedChange = { viewModel.updateAutoGroup(it) }
             )
         }
 
@@ -85,7 +81,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 title = "一键清空状态栏通知",
                 subtitle = "清除由本应用发出的所有测试通知",
                 titleColor = MaterialTheme.colorScheme.error,
-                onClick = { /* 稍后绑定 dispatcher.clearAll() */ }
+                onClick = {viewModel.clearAllMockNotifications()}
             )
         }
     }

@@ -1,7 +1,7 @@
-package com.example.mockmessagetester.mocksender.data.corpus
+package com.example.mockmessagetester.mocksender.data.mockmessages.corpus
 
-import com.example.mockmessagetester.mocksender.data.MockMessage
-import com.example.mockmessagetester.mocksender.data.MockScenario
+import com.example.mockmessagetester.mocksender.data.mockmessages.MockMessage
+import com.example.mockmessagetester.mocksender.data.mockmessages.MockScenario
 
 /**
  * 测试剧本 01：论文死线前的兵荒马乱

@@ -17,16 +17,33 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mockmessagetester.data.preferences.SettingsRepository
 import com.example.mockmessagetester.ui.screens.mocklab.MockLabScreen
 import com.example.mockmessagetester.ui.screens.settings.SettingsScreen
+import com.example.mockmessagetester.ui.screens.settings.SettingsViewModel
 
-@OptIn(ExperimentalFoundationApi::class) // <- 关键修复：显式声明使用实验性 API
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainPagerScreen(modifier: Modifier = Modifier) {
-    // 创建一个包含 2 页的翻页状态，初始页为 0 (控制面板)
     val pagerState = rememberPagerState(pageCount = { 2 })
 
+// 获取当前上下文
+    val context = LocalContext.current
+    // 从上下文中提取出 Application 层级的 context
+    val application = context.applicationContext as android.app.Application
+    // 实例化底层的 Repository
+    val settingsRepository = SettingsRepository(context)
+
+    // 使用工厂模式创建 SettingsViewModel，传入刚刚准备好的两个参数
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(
+            application = application,
+            repository = settingsRepository
+        )
+    )
     Column(modifier = modifier.fillMaxSize()) {
         // 1. 滑动内容区
         HorizontalPager(
@@ -35,7 +52,8 @@ fun MainPagerScreen(modifier: Modifier = Modifier) {
         ) { page ->
             when (page) {
                 0 -> MockLabScreen()
-                1 -> SettingsScreen()
+                // 把刚建好的 viewModel 顺着管子塞进 SettingsScreen
+                1 -> SettingsScreen(viewModel = settingsViewModel)
             }
         }
 

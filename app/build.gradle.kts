@@ -68,4 +68,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
 
     implementation("androidx.compose.foundation:foundation")
+
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }

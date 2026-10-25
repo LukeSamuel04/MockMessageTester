@@ -1,4 +1,4 @@
-package com.example.mockmessagetester.mocksender.data
+package com.example.mockmessagetester.mocksender.data.mockmessages
 
 import java.util.UUID
 
